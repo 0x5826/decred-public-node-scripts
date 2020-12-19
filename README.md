@@ -1,5 +1,5 @@
 # decred-public-node-scripts
-Setup your own decred public node with vps quickly
+一键部署decred网络公共节点
 
 ### 备忘
 #### 【！】脚本流程
