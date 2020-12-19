@@ -16,7 +16,7 @@ if [[ $(id -u) != 0 ]]; then
     exit 1
 fi
 
-identify_the_operating_system_and_architecture() {
+identify_os_and_architecture() {
   if [[ "$(uname)" == 'Linux' ]]; then
     case "$(uname -m)" in
       'i386' | 'i686')
@@ -46,8 +46,7 @@ VERSION=$(curl -fsSL https://api.github.com/repos/decred/decred-binaries/release
 TARBALL="decred-linux-$MACHINE-$VERSION.tar.gz"
 DOWNLOADURL="https://github.com/decred/decred-binaries/releases/download/v$VERSION/$TARBALL"
 TMPDIR="$(mktemp -d)"
-INSTALLPREFIX=/usr/local
-SYSTEMDPREFIX=/etc/systemd/system
+
 
 BINARYPATH="$INSTALLPREFIX/bin/$NAME"
 CONFIGPATH="$INSTALLPREFIX/etc/$NAME/config.json"
