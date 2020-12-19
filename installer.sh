@@ -47,7 +47,7 @@ TARBALL="decred-linux-$MACHINE-$VERSION.tar.gz"
 DOWNLOADURL="https://github.com/decred/decred-binaries/releases/download/v$VERSION/$TARBALL"
 TMPDIR="$(mktemp -d)"
 
-
+DCRD_HOME="/home/decred/.dcrd"
+INSTALLPREFIX="/usr/local"
 BINARYPATH="$INSTALLPREFIX/bin/$NAME"
-CONFIGPATH="$INSTALLPREFIX/etc/$NAME/config.json"
-SYSTEMDPATH="$SYSTEMDPREFIX/$NAME.service"
+CONFIGPATH="$DCRD_HOME/dcrd.conf"
