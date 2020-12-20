@@ -28,3 +28,4 @@
 ### 实验性
 1. 加入自动检测文件权限相关的定期执行脚本
 2. 加入定期自动更新最新dcrd版本 scriptname.sh update
+3. test
