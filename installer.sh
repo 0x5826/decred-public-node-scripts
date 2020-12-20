@@ -48,3 +48,11 @@ TMPDIR="$(mktemp -d)"
 DCRD_HOME="/home/decred"
 BINARYPATH="$DCRD_HOME/decred/dcrd"
 CONFIGPATH="$DCRD_HOME/.dcrd/dcrd.conf"
+
+#检查是否存在用户、进程和端口
+#检查磁盘、内存和IP是否符合公共节点条件
+
+#创建用户/用户组
+#下载二进制文件并拷贝到$BINARYPATH
+#下载systemd服务配置文件
+#
