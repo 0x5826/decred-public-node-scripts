@@ -40,14 +40,11 @@ identify_os_and_architecture() {
       echo "error: Don't use outdated Linux distributions."
       exit 1
     fi
-
-NAME=dcrd
 VERSION=$(curl -fsSL https://api.github.com/repos/decred/decred-binaries/releases/latest | grep tag_name | sed -E 's/.*"v(.*)".*/\1/')
 TARBALL="decred-linux-$MACHINE-$VERSION.tar.gz"
 DOWNLOADURL="https://github.com/decred/decred-binaries/releases/download/v$VERSION/$TARBALL"
 TMPDIR="$(mktemp -d)"
 
-DCRD_HOME="/home/decred/.dcrd"
-INSTALLPREFIX="/usr/local"
-BINARYPATH="$INSTALLPREFIX/bin/$NAME"
-CONFIGPATH="$DCRD_HOME/dcrd.conf"
+DCRD_HOME="/home/decred"
+BINARYPATH="$DCRD_HOME/decred/dcrd"
+CONFIGPATH="$DCRD_HOME/.dcrd/dcrd.conf"
