@@ -49,6 +49,9 @@ DCRD_HOME="/home/decred"
 BINARYPATH="$DCRD_HOME/decred/dcrd"
 CONFIGPATH="$DCRD_HOME/.dcrd/dcrd.conf"
 
+check_exsit() {
+  
+}
 #检查是否存在用户、进程和端口
 #检查磁盘、内存和IP是否符合公共节点条件
 
