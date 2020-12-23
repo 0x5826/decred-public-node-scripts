@@ -286,3 +286,4 @@ set_env_variables
 check_dcrd_env
 install_software
 download_dcrd
+upgrade_dcrd
