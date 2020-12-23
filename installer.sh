@@ -11,12 +11,47 @@ function prompt() {
     done
 }
 
-if [[ $(id -u) != 0 ]]; then
-    echo Please run this script as root.
+function check_environment() {
+  if [[ $(id -u) != 0 ]]; then
+    echo "[ERROR]Please run this script as root!"
     exit 1
-fi
+  fi
 
-identify_os_and_architecture() {
+  egrep "^$GROUP" /etc/group >& /dev/null
+  if [ $? -eq 0 ]
+  then
+    echo "[WARN]Found user: dcrd!"
+  fi
+  
+  egrep "^$USER" /etc/passwd >& /dev/null
+  if [ $? -eq 0 ]
+  then
+    echo "[WARN]Found group: dcrd!"
+  fi
+
+  free_mem=$(free -m|awk 'NR==2' |awk '{print$7}')
+  if [ $free_mem -lt 768 ]
+  then 
+    echo "[ERROR]The memory request for 760MB at least"
+    exit 1
+  fi
+
+  free_disk=$(df -B G /|awk '/\//{print$4}' | awk '{sub(/.{1}$/,"")}1' | sed 's/G//')
+  if [ $free_disk -lt 8 ]
+  then 
+    echo "[ERROR]The disk request for 8GB at least"
+    exit 1
+  fi
+
+  dcrd_port=$(netstat -an | grep ":9108 " | awk '$1 == "tcp" && $NF == "LISTEN" {print $0}')
+  if [ -n $dcrd_port ]
+  then
+    echo "[ERROR]Found another program listening 9108 Port!"
+    exit 1
+  fi
+}
+
+function identify_os_and_architecture() {
   if [[ "$(uname)" == 'Linux' ]]; then
     case "$(uname -m)" in
       'i386' | 'i686')
@@ -40,22 +75,16 @@ identify_os_and_architecture() {
       echo "error: Don't use outdated Linux distributions."
       exit 1
     fi
+
+# Last binary
 VERSION=$(curl -fsSL https://api.github.com/repos/decred/decred-binaries/releases/latest | grep tag_name | sed -E 's/.*"v(.*)".*/\1/')
 TARBALL="decred-linux-$MACHINE-$VERSION.tar.gz"
 DOWNLOADURL="https://github.com/decred/decred-binaries/releases/download/v$VERSION/$TARBALL"
 TMPDIR="$(mktemp -d)"
 
-DCRD_HOME="/home/decred"
+# Environment
+USER="dcrd"
+GROUP="dcrd"
+DCRD_HOME="/home/$USER"
 BINARYPATH="$DCRD_HOME/decred/dcrd"
 CONFIGPATH="$DCRD_HOME/.dcrd/dcrd.conf"
-
-check_exsit() {
-  
-}
-#检查是否存在用户、进程和端口
-#检查磁盘、内存和IP是否符合公共节点条件
-
-#创建用户/用户组
-#下载二进制文件并拷贝到$BINARYPATH
-#下载systemd服务配置文件
-#
