@@ -28,7 +28,7 @@ INTERNET_IPv4=$(curl -s ipv4.ip.sb)
 VERSION=$(curl -fsSL https://api.github.com/repos/decred/decred-binaries/releases/latest | grep tag_name | sed -E 's/.*"v(.*)".*/\1/')
 TARBALL="decred-linux-$MACHINE-v$VERSION.tar.gz"
 DOWNLOADURL="https://github.com/decred/decred-binaries/releases/download/v$VERSION/$TARBALL"
-SERVICEURL="https://raw.githubusercontent.com/0x5826/decred-public-node-scripts/main/systemd/dcrd.service"
+SERVICEURL="https://raw.githubusercontent.com/decred/dcrd/master/contrib/services/systemd/dcrd.service"
 
 function check_environment() {
   egrep "^$GROUP" /etc/group >& /dev/null
