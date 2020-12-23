@@ -125,18 +125,6 @@ function set_env_variables() {
 }
 
 function check_dcrd_env () {
-  egrep "^$GROUP" /etc/group >& /dev/null
-  if [ $? -eq 0 ]
-  then
-    echo "[WARN]Found user:$GROUP."
-  fi
-
-  egrep "^$USER" /etc/passwd >& /dev/null
-  if [ $? -eq 0 ]
-  then
-    echo "[WARN]Found group:$USER."
-  fi
-
   if [ -d "$DCRD_USER_HOME" ]
   then
     echo "[WARN]$DCRD_USER_HOME existed"
@@ -154,7 +142,6 @@ function check_dcrd_env () {
         echo "[WARN]The existed diretory may cause unexpected problem!"
         ;;
     esac
-  # Step 3 Generate dcrd.con
   fi
 
   if [ -d "$BINARYPATH" ]
@@ -203,19 +190,12 @@ function download_dcrd() {
 
 function install_dcrd() {
   echo "[INFO]Installing dcrd……"
-  # Step 1 create dcrd dcrd
-  egrep "^$GROUP" /etc/group >& /dev/null
+  id "$USER" /etc/passwd >& /dev/null
   if [ $? -ne 0 ]
   then
       groupadd $GROUP
-  fi
-
-  egrep "^$USER" /etc/passwd >& /dev/null
-  if [ $? -ne 0 ]
-  then
       useradd -m -g $GROUP -s /sbin/nologin $USER
   fi
-  # Step 2 COPY binary and systemd service file
   mkdir -p $DCRD_DATA_HOME && chown dcrd:dcrd $DCRD_DATA_HOME
   mkdir -p $BINARYDIR && chown -R dcrd:dcrd $BINARYDIR
   cd "$TMPDIR"
@@ -232,13 +212,11 @@ function install_dcrd() {
         echo "[INFO]You can use command 'systemd enable dcrd.service' to enable it later."
         ;;
     esac
-  # Step 3 Generate dcrd.conf
   echo "[INFO]Generating dcrd.conf……"
   echo "externalip=$INTERNET_IPv4" > $CONFIGPATH
   echo "rpcuser=$RPCUSER" >> $CONFIGPATH
   echo "rpcpass=$RPCPASS" >> $CONFIGPATH
 
-  # Step 4 Run dcrd
   echo "[INFO]Running dcrd node program……"
   systemd start dcrd.service
   dcrd_status=$(systemctl status dcrd.service)
