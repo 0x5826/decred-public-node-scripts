@@ -36,7 +36,7 @@ function check_environment() {
     exit 1
   fi
 
-  free_disk=$(df -B G /|awk '/\//{print$4}' | awk '{sub(/.{1}$/,"")}1' | sed 's/G//')
+  free_disk=$(df -B G /home |awk '/\//{print$4}' | awk '{sub(/.{1}$/,"")}1' | sed 's/G//')
   if [ $free_disk -lt 8 ]
   then 
     echo "[ERROR]The disk request for 8GB at least, But only $free_disk GB"
@@ -80,6 +80,7 @@ function identify_os_and_architecture() {
 VERSION=$(curl -fsSL https://api.github.com/repos/decred/decred-binaries/releases/latest | grep tag_name | sed -E 's/.*"v(.*)".*/\1/')
 TARBALL="decred-linux-$MACHINE-$VERSION.tar.gz"
 DOWNLOADURL="https://github.com/decred/decred-binaries/releases/download/v$VERSION/$TARBALL"
+SERVICEURL="https://raw.githubusercontent.com/0x5826/decred-public-node-scripts/main/systemd/dcrd.service"
 TMPDIR="$(mktemp -d)"
 
 # Environment
