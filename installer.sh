@@ -74,10 +74,10 @@ function check_os_architecture() {
 check_root
 check_os_architecture
 
-if ${PACKAGE_MANAGEMENT_INSTALL} "curl wget"; then
-    echo "info: curl wget is installed."
+if ${PACKAGE_MANAGEMENT_INSTALL} "curl" "wget" ; then
+    echo "[INFO]curl wget is installed."
   else
-    echo "error: Installation of curl wget failed, please check your network."
+    echo "[ERROR]Installation of curl wget failed, please check your network."
     exit 1
 fi
 
@@ -88,6 +88,8 @@ DCRD_DATA_HOME="/home/$USER/.dcrd"
 BINARYDIR="$DCRD_USER_HOME/decred"
 BINARYPATH="$DCRD_USER_HOME/decred/dcrd"
 CONFIGPATH="$DCRD_USER_HOME/.dcrd/dcrd.conf"
+RPCUSER=$(openssl rand 16 | base64)
+RPCPASS=$(openssl rand 16 | base64)
 TMPDIR="$(mktemp -d)"
 INTERFACE_IPv4=$(ifconfig -a|grep inet|grep -v 127.0.0.1|grep -v inet6|awk '{print $2}'|tr -d "addr:")
 INTERNET_IPv4=$(curl -s ipv4.ip.sb)
@@ -115,7 +117,7 @@ function check_os_require() {
   fi
 }
 
-check_dcrd_environment () {
+function check_dcrd_environment () {
   egrep "^$GROUP" /etc/group >& /dev/null
   if [ $? -eq 0 ]
   then
@@ -135,18 +137,37 @@ check_dcrd_environment () {
 
   if [ -d "$DCRD_DATA_HOME" ]
   then
-    echo "[WARN]$DCRD_DATA_HOME existed"
+    read -p "[WARN]$DCRD_DATA_HOME existed, Do you want to delete $DCRD_DATA_HOME [Y/n] " yn
+    case $yn in
+        [Yy] )
+        rm -rf $DCRD_DATA_HOME
+        echo "[INFO]$DCRD_DATA_HOME deleted."
+        ;;
+        [Nn]|"" )
+        echo "[WARN]The existed diretory may cause unexpected problem!"
+        ;;
+    esac
+  # Step 3 Generate dcrd.con
   fi
 
   if [ -d "$BINARYPATH" ]
   then
-    echo "[WARN]$BINARYPATH existed"
+    read -p "[WARN]$BINARYPATH existed, Do you want to delete $BINARYPATH [Y/n] " yn
+    case $yn in
+        [Yy] )
+        rm -rf $BINARYPATH
+        echo "[INFO]$BINARYPATH deleted."
+        ;;
+        [Nn]|"" )
+        echo "[WARN]The existed diretory may cause unexpected problem!"
+        ;;
+    esac
   fi
 
   dcrd_port=$(netstat -an | grep ":9108 " | awk '$1 == "tcp" && $NF == "LISTEN" {print $0}')
   if [ -n "$dcrd_port" ]
   then
-    echo "[ERROR]Found another program listening 9108 Port."
+    echo "[ERROR]Another program listening 9108 Port."
     exit 1
   fi
 
@@ -175,7 +196,7 @@ function download_dcrd() {
 
 function install_dcrd() {
   echo "[INFO]Installing dcrd……"
-# Step 1 create dcrd dcrd
+  # Step 1 create dcrd dcrd
   egrep "^$GROUP" /etc/group >& /dev/null
   if [ $? -ne 0 ]
   then
@@ -187,9 +208,11 @@ function install_dcrd() {
   then
       useradd -m -g $GROUP -s /sbin/nologin $USER
   fi
-# Step 2 COPY binary and systemd service file
+  # Step 2 COPY binary and systemd service file
   mkdir -p $DCRD_DATA_HOME && chown dcrd:dcrd $DCRD_DATA_HOME
   mkdir -p $BINARYDIR && chown -R dcrd:dcrd $BINARYDIR
+  cd "$TMPDIR"
+  tar zxf $DECRED_ARCHIVE
   cp -f "$TMPDIR/decred-linux-$MACHINE-$VERSION/dcrd" $BINARYPATH && chown dcrd:dcrd $BINARYPATH &&chmod a+x $BINARYPATH
   cp -f "$TMPDIR/dcrd.service" /etc/systemd/system/dcrd.service
   
@@ -202,11 +225,13 @@ function install_dcrd() {
         echo "[INFO]You can use command 'systemd enable dcrd.service' to enable it later."
         ;;
     esac
-# Step 3 Generate dcrd.conf
+  # Step 3 Generate dcrd.conf
   echo "[INFO]Generating dcrd.conf……"
-  echo "externalip=$INTERNET_IPv4" >> $CONFIGPATH
+  echo "externalip=$INTERNET_IPv4" > $CONFIGPATH
+  echo "rpcuser=$RPCUSER" >> $CONFIGPATH
+  echo "rpcpass=$RPCPASS" >> $CONFIGPATH
 
-# Step 4 Run dcrd.conf
+  # Step 4 Run dcrd
   echo "[INFO]Running dcrd node program……"
   systemd start dcrd.service
   dcrd_status=$(systemctl status dcrd.service)
@@ -214,6 +239,9 @@ function install_dcrd() {
   then
       echo "[INFO]dcrd is running, Clean tmp files……"
       rm -rf "$TMPDIR"
+      echo "[INFO]Install Finished!"
+      echo "[INFO]dcrd data directory:$DCRD_DATA_HOME"
+      echo "[INFO]dcrd binary directory:$BINARYPATH"
   else
       echo "[ERROR]There is something wrong with running dcrd. info:"
       systemctl status dcrd.service
