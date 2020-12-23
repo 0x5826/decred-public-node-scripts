@@ -40,7 +40,7 @@ function check_environment() {
   free_mem=$(free -m|awk 'NR==2' |awk '{print$7}')
   if [ $free_mem -lt 768 ]
   then 
-    echo "[ERROR]The memory request for 760MB at least, But only $free_mem MB."
+    echo "[ERROR]The memory request for 768MB at least, But only $free_mem MB."
     exit 1
   fi
 
