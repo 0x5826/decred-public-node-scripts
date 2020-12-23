@@ -71,6 +71,15 @@ function check_os_arch() {
   fi
 }
 
+function install_software() {
+  if ${PACKAGE_MANAGEMENT_INSTALL} "curl" "wget" ; then
+    echo "[INFO]curl wget is installed."
+  else
+    echo "[ERROR]Installation of curl wget failed, please check your network."
+    exit 1
+  fi
+}
+
 function check_os_resources() {
   free_mem=$(free -m|awk 'NR==2' |awk '{print$7}')
   if [ $free_mem -lt 768 ]
@@ -167,15 +176,6 @@ function check_dcrd_env () {
   then
     echo "[WARN]Your interface IP:$INTERFACE_IPv4 and Internet IP:$INTERNET_IPv4 are inconsistent, some conditions refer to $WIKIURL"
     echo "[WARN]Dcrd Node will use Internet IP for dcrd.conf."
-  fi
-}
-
-function install_software() {
-  if ${PACKAGE_MANAGEMENT_INSTALL} "curl" "wget" ; then
-    echo "[INFO]curl wget is installed."
-  else
-    echo "[ERROR]Installation of curl wget failed, please check your network."
-    exit 1
   fi
 }
 
