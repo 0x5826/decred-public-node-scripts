@@ -1,77 +1,14 @@
 #!/bin/bash
 set -euo pipefail
 
-if [[ $(id -u) != 0 ]]; then
-  echo "[ERROR]Please run this script as root."
-  exit 1
-fi
-
-function prompt() {
-    while true; do
-        read -p "$1 [y/N] " yn
-        case $yn in
-            [Yy] ) return 0;;
-            [Nn]|"" ) return 1;;
-        esac
-    done
-}
-USER="dcrd"
-GROUP="dcrd"
-DCRD_USER_HOME="/home/$USER"
-DCRD_DATA_HOME="/home/$USER/.dcrd"
-BINARYDIR="$DCRD_USER_HOME/decred"
-BINARYPATH="$DCRD_USER_HOME/decred/dcrd"
-CONFIGPATH="$DCRD_USER_HOME/.dcrd/dcrd.conf"
-TMPDIR="$(mktemp -d)"
-INTERFACE_IPv4=$(ifconfig -a|grep inet|grep -v 127.0.0.1|grep -v inet6|awk '{print $2}'|tr -d "addr:")
-INTERNET_IPv4=$(curl -s ipv4.ip.sb)
-VERSION=$(curl -fsSL https://api.github.com/repos/decred/decred-binaries/releases/latest | grep tag_name | sed -E 's/.*"v(.*)".*/\1/')
-TARBALL="decred-linux-$MACHINE-v$VERSION.tar.gz"
-DOWNLOADURL="https://github.com/decred/decred-binaries/releases/download/v$VERSION/$TARBALL"
-SERVICEURL="https://raw.githubusercontent.com/decred/dcrd/master/contrib/services/systemd/dcrd.service"
-
-function check_environment() {
-  egrep "^$GROUP" /etc/group >& /dev/null
-  if [ $? -eq 0 ]
-  then
-    echo "[WARN]Found user: dcrd."
-  fi
-
-  egrep "^$USER" /etc/passwd >& /dev/null
-  if [ $? -eq 0 ]
-  then
-    echo "[WARN]Found group: dcrd."
-  fi
-
-  free_mem=$(free -m|awk 'NR==2' |awk '{print$7}')
-  if [ $free_mem -lt 768 ]
-  then 
-    echo "[ERROR]The memory request for 768MB at least, But only $free_mem MB."
+function check_root() {
+  if [[ "$UID" -ne '0' ]]; then
+    echo "error: You must run this script as root!"
     exit 1
-  fi
-
-  free_disk=$(df -B G /home |awk '/\//{print$4}' | awk '{sub(/.{1}$/,"")}1' | sed 's/G//')
-  if [ $free_disk -lt 8 ]
-  then 
-    echo "[ERROR]The disk request for 8GB at least, But only $free_disk GB."
-    exit 1
-  fi
-
-  dcrd_port=$(netstat -an | grep ":9108 " | awk '$1 == "tcp" && $NF == "LISTEN" {print $0}')
-  if [ -n "$dcrd_port" ]
-  then
-    echo "[ERROR]Found another program listening 9108 Port."
-    exit 1
-  fi
-
-  if [ $INTERFACE_IPv4 -ne $INTERNET_IPv4 ]
-  then
-    echo "[WARN]Your interface IP:$interface_ipv4 and Internet IP:$internet_ipv4 are inconsistent, some conditions refer to $knowsurl"
-    echo "[WARN]Dcrd Node will use Internet IP for externalIP."
   fi
 }
 
-function download_dcrd() {
+function check_os_architecture() {
   if [[ "$(uname)" == 'Linux' ]]; then
   case "$(uname -m)" in
     'i386' | 'i686')
@@ -90,21 +27,150 @@ function download_dcrd() {
       echo "[ERROR]The architecture is not supported."
       exit 1
       ;;
-  esac
-  fi
+    esac
+    if [[ ! -f '/etc/os-release' ]]; then
+      echo "error: Don't use outdated Linux distributions."
+      exit 1
+    fi
 
-  if [[ ! -f '/etc/os-release' ]]; then
-    echo "[ERROR]Don't use outdated Linux distributions."
+    if [[ -f /.dockerenv ]] || grep -q 'docker\|lxc' /proc/1/cgroup && [[ "$(type -P systemctl)" ]]; then
+      true
+    elif [[ -d /run/systemd/system ]] || grep -q systemd <(ls -l /sbin/init); then
+      true
+    else
+      echo "error: Only Linux distributions using systemd are supported."
+      exit 1
+    fi
+    if [[ "$(type -P apt)" ]]; then
+      PACKAGE_MANAGEMENT_INSTALL='apt -y --no-install-recommends install'
+      PACKAGE_MANAGEMENT_REMOVE='apt purge'
+      package_provide_tput='ncurses-bin'
+    elif [[ "$(type -P dnf)" ]]; then
+      PACKAGE_MANAGEMENT_INSTALL='dnf -y install'
+      PACKAGE_MANAGEMENT_REMOVE='dnf remove'
+      package_provide_tput='ncurses'
+    elif [[ "$(type -P yum)" ]]; then
+      PACKAGE_MANAGEMENT_INSTALL='yum -y install'
+      PACKAGE_MANAGEMENT_REMOVE='yum remove'
+      package_provide_tput='ncurses'
+    elif [[ "$(type -P zypper)" ]]; then
+      PACKAGE_MANAGEMENT_INSTALL='zypper install -y --no-recommends'
+      PACKAGE_MANAGEMENT_REMOVE='zypper remove'
+      package_provide_tput='ncurses-utils'
+    elif [[ "$(type -P pacman)" ]]; then
+      PACKAGE_MANAGEMENT_INSTALL='pacman -Syu --noconfirm'
+      PACKAGE_MANAGEMENT_REMOVE='pacman -Rsn'
+      package_provide_tput='ncurses'
+    else
+      echo "error: The script does not support the package manager in this operating system."
+      exit 1
+    fi
+  else
+    echo "error: This operating system is not supported."
+    exit 1
+  fi
+}
+
+check_root
+check_os_architecture
+
+if ${PACKAGE_MANAGEMENT_INSTALL} "curl wget"; then
+    echo "info: curl wget is installed."
+  else
+    echo "error: Installation of curl wget failed, please check your network."
+    exit 1
+fi
+
+USER="dcrd"
+GROUP="dcrd"
+DCRD_USER_HOME="/home/$USER"
+DCRD_DATA_HOME="/home/$USER/.dcrd"
+BINARYDIR="$DCRD_USER_HOME/decred"
+BINARYPATH="$DCRD_USER_HOME/decred/dcrd"
+CONFIGPATH="$DCRD_USER_HOME/.dcrd/dcrd.conf"
+TMPDIR="$(mktemp -d)"
+INTERFACE_IPv4=$(ifconfig -a|grep inet|grep -v 127.0.0.1|grep -v inet6|awk '{print $2}'|tr -d "addr:")
+INTERNET_IPv4=$(curl -s ipv4.ip.sb)
+VERSION=$(curl -fsSL https://api.github.com/repos/decred/decred-binaries/releases/latest | grep tag_name | sed -E 's/.*"(.*)".*/\1/')
+DECRED_ARCHIVE="decred-linux-$MACHINE-$VERSION.tar.gz"
+MANIFEST_SIGN="decred-$VERSION-manifest.txt.asc"
+MANIFEST="decred-$VERSION-manifest.txt"
+BASEURL="https://github.com/decred/decred-binaries/releases/download/$VERSION"
+SERVICEURL="https://raw.githubusercontent.com/decred/dcrd/master/contrib/services/systemd/dcrd.service"
+WIKIURL="https://www.github.com/0x5826"
+
+function check_os_require() {
+  free_mem=$(free -m|awk 'NR==2' |awk '{print$7}')
+  if [ $free_mem -lt 768 ]
+  then 
+    echo "[ERROR]The memory request for 768MB at least, But only $free_mem MB."
     exit 1
   fi
 
+  free_disk=$(df -B G /home |awk '/\//{print$4}' | awk '{sub(/.{1}$/,"")}1' | sed 's/G//')
+  if [ $free_disk -lt 8 ]
+  then 
+    echo "[ERROR]The disk request for 8GB at least, But only $free_disk GB."
+    exit 1
+  fi
+}
+
+check_dcrd_environment () {
+  egrep "^$GROUP" /etc/group >& /dev/null
+  if [ $? -eq 0 ]
+  then
+    echo "[WARN]Found user:$GROUP."
+  fi
+
+  egrep "^$USER" /etc/passwd >& /dev/null
+  if [ $? -eq 0 ]
+  then
+    echo "[WARN]Found group:$USER."
+  fi
+
+  if [ -d "$DCRD_USER_HOME" ]
+  then
+    echo "[WARN]$DCRD_USER_HOME existed"
+  fi
+
+  if [ -d "$DCRD_DATA_HOME" ]
+  then
+    echo "[WARN]$DCRD_DATA_HOME existed"
+  fi
+
+  if [ -d "$BINARYPATH" ]
+  then
+    echo "[WARN]$BINARYPATH existed"
+  fi
+
+  dcrd_port=$(netstat -an | grep ":9108 " | awk '$1 == "tcp" && $NF == "LISTEN" {print $0}')
+  if [ -n "$dcrd_port" ]
+  then
+    echo "[ERROR]Found another program listening 9108 Port."
+    exit 1
+  fi
+
+  if [ "$INTERFACE_IPv4" != "$INTERNET_IPv4" ]
+  then
+    echo "[WARN]Your interface IP:$INTERFACE_IPv4 and Internet IP:$INTERNET_IPv4 are inconsistent, some conditions refer to $WIKIURL"
+    echo "[WARN]Dcrd Node will use Internet IP for dcrd.conf."
+  fi
+}
+
+function download_dcrd() {
   cd "$TMPDIR"
-  echo "[INFO]Downloading $TARBALL..."
-  curl -LO --progress-bar "$DOWNLOADURL" || wget -q --show-progress "$DOWNLOADURL"
-  echo "[INFO]Unpacking $TARBALL..."
-  tar zxf "$TARBALL"
-  echo "[INFO]Downloading dcrd.service..."
-  curl -LO --progress-bar "$SERVICEURL" || wget -q --show-progress "$SERVICEURL"
+  echo "[INFO]Downloading $DECRED_ARCHIVE..."
+  $(type -P curl) -LO --retry 5 --retry-delay 10 --retry-max-time 60 "$BASEURL/$DECRED_ARCHIVE" || $(type -P wget) -q -t 5 "$BASEURL/$DECRED_ARCHIVE"
+  $(type -P curl) -LO --retry 5 --retry-delay 10 --retry-max-time 60 "$BASEURL/$MANIFEST_SIGN" || $(type -P wget) -q -t 5 "$BASEURL/$MANIFEST_SIGN"
+  $(type -P curl) -LO --retry 5 --retry-delay 10 --retry-max-time 60 "$BASEURL/$MANIFEST" || $(type -P wget) -q -t 5 "$BASEURL/$MANIFEST"
+  SHA256SUM=$(grep "$DECRED_ARCHIVE" $MANIFEST | $(type -P sha256sum ) -c -)
+  if [[ "$SHA256SUM" =~ "OK" ]]; then
+    echo "[INFO]Download finished and Verify"
+  else
+    echo "[ERROR]Check failed! Please check your network or try again."
+    rm -f $TMPDIR
+    exit 1
+  fi
 }
 
 function install_dcrd() {
@@ -124,7 +190,7 @@ function install_dcrd() {
 # Step 2 COPY binary and systemd service file
   mkdir -p $DCRD_DATA_HOME && chown dcrd:dcrd $DCRD_DATA_HOME
   mkdir -p $BINARYDIR && chown -R dcrd:dcrd $BINARYDIR
-  cp -f "$TMPDIR/decred-linux-$MACHINE-v$VERSION/dcrd" $BINARYPATH && chown dcrd:dcrd $BINARYPATH &&chmod a+x $BINARYPATH
+  cp -f "$TMPDIR/decred-linux-$MACHINE-$VERSION/dcrd" $BINARYPATH && chown dcrd:dcrd $BINARYPATH &&chmod a+x $BINARYPATH
   cp -f "$TMPDIR/dcrd.service" /etc/systemd/system/dcrd.service
   
   read -p "[INFO]Start dcrd at boot: [Y/n] " yn
@@ -159,11 +225,7 @@ function upgrade_dcrd() {
   echo "[INFO]stop dcrd node program……"
   systemctl stop dcrd.service
   cd "$TMPDIR"
-  echo "[INFO]Downloading $TARBALL..."
-  curl -LO --progress-bar "$DOWNLOADURL" || wget -q --show-progress "$DOWNLOADURL"
-  echo "[INFO]Unpacking $TARBALL..."
-  tar zxf "$TARBALL"
-  cp -f "$TMPDIR/decred-linux-$MACHINE-v$VERSION/dcrd" $BINARYPATH && chown dcrd:dcrd $BINARYPATH &&chmod a+x $BINARYPATH
+  ##
   echo "[INFO]starting dcrd node program……"
   dcrd_status=$(systemctl status dcrd.service)
   if [[ $str =~ "running" ]]
@@ -187,3 +249,4 @@ function uninstall_dcrd() {
   userdel -r $USER
   groupdel $GROUP
 }
+
