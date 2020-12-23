@@ -77,6 +77,7 @@ function check_os_arch() {
 }
 
 function install_software() {
+  ${PACKAGE_MANAGEMENT_UPDATE}
   if ${PACKAGE_MANAGEMENT_INSTALL} "curl" "wget" ; then
     echo "[INFO]curl wget is installed."
   else
