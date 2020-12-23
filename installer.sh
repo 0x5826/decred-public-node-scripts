@@ -22,7 +22,7 @@ function check_environment() {
   then
     echo "[WARN]Found user: dcrd!"
   fi
-  
+
   egrep "^$USER" /etc/passwd >& /dev/null
   if [ $? -eq 0 ]
   then
@@ -32,21 +32,21 @@ function check_environment() {
   free_mem=$(free -m|awk 'NR==2' |awk '{print$7}')
   if [ $free_mem -lt 768 ]
   then 
-    echo "[ERROR]The memory request for 760MB at least"
+    echo "[ERROR]The memory request for 760MB at least, But only $free_mem MB"
     exit 1
   fi
 
   free_disk=$(df -B G /|awk '/\//{print$4}' | awk '{sub(/.{1}$/,"")}1' | sed 's/G//')
   if [ $free_disk -lt 8 ]
   then 
-    echo "[ERROR]The disk request for 8GB at least"
+    echo "[ERROR]The disk request for 8GB at least, But only $free_disk GB"
     exit 1
   fi
 
   dcrd_port=$(netstat -an | grep ":9108 " | awk '$1 == "tcp" && $NF == "LISTEN" {print $0}')
-  if [ -n $dcrd_port ]
+  if [ -n "$dcrd_port" ]
   then
-    echo "[ERROR]Found another program listening 9108 Port!"
+    echo "[ERROR]Found another program listening 9108 Port"
     exit 1
   fi
 }
