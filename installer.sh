@@ -15,14 +15,6 @@ function prompt() {
         esac
     done
 }
-
-INTERFACE_IPv4=$(ifconfig -a|grep inet|grep -v 127.0.0.1|grep -v inet6|awk '{print $2}'|tr -d "addr:")
-INTERNET_IPv4=$(curl -s ipv4.ip.sb)
-VERSION=$(curl -fsSL https://api.github.com/repos/decred/decred-binaries/releases/latest | grep tag_name | sed -E 's/.*"v(.*)".*/\1/')
-TARBALL="decred-linux-$MACHINE-v$VERSION.tar.gz"
-DOWNLOADURL="https://github.com/decred/decred-binaries/releases/download/v$VERSION/$TARBALL"
-SERVICEURL="https://raw.githubusercontent.com/0x5826/decred-public-node-scripts/main/systemd/dcrd.service"
-TMPDIR="$(mktemp -d)"
 USER="dcrd"
 GROUP="dcrd"
 DCRD_USER_HOME="/home/$USER"
@@ -30,6 +22,13 @@ DCRD_DATA_HOME="/home/$USER/.dcrd"
 BINARYDIR="$DCRD_USER_HOME/decred"
 BINARYPATH="$DCRD_USER_HOME/decred/dcrd"
 CONFIGPATH="$DCRD_USER_HOME/.dcrd/dcrd.conf"
+TMPDIR="$(mktemp -d)"
+INTERFACE_IPv4=$(ifconfig -a|grep inet|grep -v 127.0.0.1|grep -v inet6|awk '{print $2}'|tr -d "addr:")
+INTERNET_IPv4=$(curl -s ipv4.ip.sb)
+VERSION=$(curl -fsSL https://api.github.com/repos/decred/decred-binaries/releases/latest | grep tag_name | sed -E 's/.*"v(.*)".*/\1/')
+TARBALL="decred-linux-$MACHINE-v$VERSION.tar.gz"
+DOWNLOADURL="https://github.com/decred/decred-binaries/releases/download/v$VERSION/$TARBALL"
+SERVICEURL="https://raw.githubusercontent.com/0x5826/decred-public-node-scripts/main/systemd/dcrd.service"
 
 function check_environment() {
   egrep "^$GROUP" /etc/group >& /dev/null
