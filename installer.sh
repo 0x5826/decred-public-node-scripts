@@ -8,7 +8,7 @@ function check_root() {
   fi
 }
 
-function check_os_architecture() {
+function check_os_arch() {
   if [[ "$(uname)" == 'Linux' ]]; then
   case "$(uname -m)" in
     'i386' | 'i686')
@@ -71,11 +71,18 @@ function check_os_architecture() {
   fi
 }
 
-function install_software() {
-  if ${PACKAGE_MANAGEMENT_INSTALL} "curl" "wget" ; then
-    echo "[INFO]curl wget is installed."
-  else
-    echo "[ERROR]Installation of curl wget failed, please check your network."
+function check_os_resources() {
+  free_mem=$(free -m|awk 'NR==2' |awk '{print$7}')
+  if [ $free_mem -lt 768 ]
+  then 
+    echo "[ERROR]The memory request for 768MB at least, But only $free_mem MB."
+    exit 1
+  fi
+
+  free_disk=$(df -B G /home |awk '/\//{print$4}' | awk '{sub(/.{1}$/,"")}1' | sed 's/G//')
+  if [ $free_disk -lt 8 ]
+  then 
+    echo "[ERROR]The disk request for 8GB at least, But only $free_disk GB."
     exit 1
   fi
 }
@@ -100,22 +107,6 @@ function set_env_variables() {
   BASEURL="https://github.com/decred/decred-binaries/releases/download/$VERSION"
   SERVICEURL="https://raw.githubusercontent.com/decred/dcrd/master/contrib/services/systemd/dcrd.service"
   WIKIURL="https://www.github.com/0x5826"
-}
-
-function check_os_require() {
-  free_mem=$(free -m|awk 'NR==2' |awk '{print$7}')
-  if [ $free_mem -lt 768 ]
-  then 
-    echo "[ERROR]The memory request for 768MB at least, But only $free_mem MB."
-    exit 1
-  fi
-
-  free_disk=$(df -B G /home |awk '/\//{print$4}' | awk '{sub(/.{1}$/,"")}1' | sed 's/G//')
-  if [ $free_disk -lt 8 ]
-  then 
-    echo "[ERROR]The disk request for 8GB at least, But only $free_disk GB."
-    exit 1
-  fi
 }
 
 function check_dcrd_env () {
@@ -176,6 +167,15 @@ function check_dcrd_env () {
   then
     echo "[WARN]Your interface IP:$INTERFACE_IPv4 and Internet IP:$INTERNET_IPv4 are inconsistent, some conditions refer to $WIKIURL"
     echo "[WARN]Dcrd Node will use Internet IP for dcrd.conf."
+  fi
+}
+
+function install_software() {
+  if ${PACKAGE_MANAGEMENT_INSTALL} "curl" "wget" ; then
+    echo "[INFO]curl wget is installed."
+  else
+    echo "[ERROR]Installation of curl wget failed, please check your network."
+    exit 1
   fi
 }
 
@@ -280,8 +280,8 @@ function uninstall_dcrd() {
 }
 
 check_root
-check_os_architecture
-check_os_require
+check_os_arch
+check_os_resources
 set_env_variables
 check_dcrd_env
 install_software
