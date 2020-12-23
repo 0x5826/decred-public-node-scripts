@@ -78,7 +78,7 @@ function check_os_arch() {
 
 function install_software() {
   ${PACKAGE_MANAGEMENT_UPDATE}
-  if ${PACKAGE_MANAGEMENT_INSTALL} "curl" "wget" ; then
+  if ${PACKAGE_MANAGEMENT_INSTALL} "curl" "wget" "systemd" ; then
     echo "[INFO]curl wget is installed."
   else
     echo "[ERROR]Installation of curl wget failed, please check your network."
@@ -132,8 +132,8 @@ function check_dcrd_env () {
 
   if [ -d "$DCRD_DATA_HOME" ]
   then
-    read -p "[WARN]$DCRD_DATA_HOME existed, Do you want to delete $DCRD_DATA_HOME [Y/n] " yn
-    case $yn in
+    read -p "[WARN]$DCRD_DATA_HOME existed, Do you want to delete $DCRD_DATA_HOME [Y/n] " option
+    case $option in
         [Yy] )
         rm -rf $DCRD_DATA_HOME
         echo "[INFO]$DCRD_DATA_HOME deleted."
@@ -146,8 +146,8 @@ function check_dcrd_env () {
 
   if [ -d "$BINARYPATH" ]
   then
-    read -p "[WARN]$BINARYPATH existed, Do you want to delete $BINARYPATH [Y/n] " yn
-    case $yn in
+    read -p "[WARN]$BINARYPATH existed, Do you want to delete $BINARYPATH [Y/n] " option
+    case $option in
         [Yy] )
         rm -rf $BINARYPATH
         echo "[INFO]$BINARYPATH deleted."
@@ -156,13 +156,6 @@ function check_dcrd_env () {
         echo "[WARN]The existed diretory may cause unexpected problem!"
         ;;
     esac
-  fi
-
-  dcrd_port=$(netstat -an | grep ":9108 " | awk '$1 == "tcp" && $NF == "LISTEN" {print $0}')
-  if [ -n $dcrd_port ]
-  then
-    echo "[ERROR]Another program listening 9108 Port."
-    exit 1
   fi
 
   if [ "$INTERFACE_IPv4" != "$INTERNET_IPv4" ]
@@ -178,9 +171,10 @@ function download_dcrd() {
   $(type -P curl) -LO --retry 5 --retry-delay 10 --retry-max-time 60 "$BASEURL/$DECRED_ARCHIVE" || $(type -P wget) -q -t 5 "$BASEURL/$DECRED_ARCHIVE"
   $(type -P curl) -LO --retry 5 --retry-delay 10 --retry-max-time 60 "$BASEURL/$MANIFEST_SIGN" || $(type -P wget) -q -t 5 "$BASEURL/$MANIFEST_SIGN"
   $(type -P curl) -LO --retry 5 --retry-delay 10 --retry-max-time 60 "$BASEURL/$MANIFEST" || $(type -P wget) -q -t 5 "$BASEURL/$MANIFEST"
+  $(type -P curl) -LO --retry 5 --retry-delay 10 --retry-max-time 60 "$SERVICEURL" || $(type -P wget) -q -t 5 "$SERVICEURL"
   SHA256SUM=$(grep "$DECRED_ARCHIVE" $MANIFEST | $(type -P sha256sum ) -c -)
   if [[ "$SHA256SUM" =~ "OK" ]]; then
-    echo "[INFO]Download finished and Verify"
+    echo "[INFO]Download finished and Verified"
   else
     echo "[ERROR]Check failed! Please check your network or try again."
     rm -f $TMPDIR
@@ -190,23 +184,20 @@ function download_dcrd() {
 
 function install_dcrd() {
   echo "[INFO]Installing dcrd……"
-  id "$USER" /etc/passwd >& /dev/null
-  if [ $? -ne 0 ]
-  then
-      groupadd $GROUP
-      useradd -m -g $GROUP -s /sbin/nologin $USER
-  fi
+  #bug1
+#  groupadd $GROUP > /dev/null 2>&1
+#  useradd -m -g $GROUP -s /sbin/nologin $USER > /dev/null 2>&1
   mkdir -p $DCRD_DATA_HOME && chown dcrd:dcrd $DCRD_DATA_HOME
   mkdir -p $BINARYDIR && chown -R dcrd:dcrd $BINARYDIR
-  cd "$TMPDIR"
+  cd $TMPDIR
   tar zxf $DECRED_ARCHIVE
-  cp -f "$TMPDIR/decred-linux-$MACHINE-$VERSION/dcrd" $BINARYPATH && chown dcrd:dcrd $BINARYPATH &&chmod a+x $BINARYPATH
-  cp -f "$TMPDIR/dcrd.service" /etc/systemd/system/dcrd.service
-  
-  read -p "[INFO]Start dcrd at boot: [Y/n] " yn
-    case $yn in
+  cp -f "decred-linux-$MACHINE-$VERSION/dcrd" $BINARYPATH && chown dcrd:dcrd $BINARYPATH &&chmod a+x $BINARYPATH
+  cp -f "dcrd.service" /etc/systemd/system/dcrd.service
+  systemctl daemon-reload
+  read -p "[INFO]Start dcrd at boot: [Y/n] " option
+    case $option in
         [Yy] )
-        systemd enable dcrd.service
+        systemctl enable dcrd.service
         ;;
         [Nn]|"" )
         echo "[INFO]You can use command 'systemd enable dcrd.service' to enable it later."
@@ -218,12 +209,12 @@ function install_dcrd() {
   echo "rpcpass=$RPCPASS" >> $CONFIGPATH
 
   echo "[INFO]Running dcrd node program……"
-  systemd start dcrd.service
+  systemctl start dcrd.service
   dcrd_status=$(systemctl status dcrd.service)
-  if [[ $str =~ "running" ]]
+  if [[ $dcrd_status =~ "running" ]]
   then
-      echo "[INFO]dcrd is running, Clean tmp files……"
       rm -rf "$TMPDIR"
+      echo "[INFO]dcrd is running, Clean tmp files……"
       echo "[INFO]Install Finished!"
       echo "[INFO]dcrd data directory:$DCRD_DATA_HOME"
       echo "[INFO]dcrd binary directory:$BINARYPATH"
