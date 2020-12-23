@@ -71,35 +71,36 @@ function check_os_architecture() {
   fi
 }
 
-check_root
-check_os_architecture
-
-if ${PACKAGE_MANAGEMENT_INSTALL} "curl" "wget" ; then
+function install_software() {
+  if ${PACKAGE_MANAGEMENT_INSTALL} "curl" "wget" ; then
     echo "[INFO]curl wget is installed."
   else
     echo "[ERROR]Installation of curl wget failed, please check your network."
     exit 1
-fi
+  fi
+}
 
-USER="dcrd"
-GROUP="dcrd"
-DCRD_USER_HOME="/home/$USER"
-DCRD_DATA_HOME="/home/$USER/.dcrd"
-BINARYDIR="$DCRD_USER_HOME/decred"
-BINARYPATH="$DCRD_USER_HOME/decred/dcrd"
-CONFIGPATH="$DCRD_USER_HOME/.dcrd/dcrd.conf"
-RPCUSER=$(openssl rand 16 | base64)
-RPCPASS=$(openssl rand 16 | base64)
-TMPDIR="$(mktemp -d)"
-INTERFACE_IPv4=$(ifconfig -a|grep inet|grep -v 127.0.0.1|grep -v inet6|awk '{print $2}'|tr -d "addr:")
-INTERNET_IPv4=$(curl -s ipv4.ip.sb)
-VERSION=$(curl -fsSL https://api.github.com/repos/decred/decred-binaries/releases/latest | grep tag_name | sed -E 's/.*"(.*)".*/\1/')
-DECRED_ARCHIVE="decred-linux-$MACHINE-$VERSION.tar.gz"
-MANIFEST_SIGN="decred-$VERSION-manifest.txt.asc"
-MANIFEST="decred-$VERSION-manifest.txt"
-BASEURL="https://github.com/decred/decred-binaries/releases/download/$VERSION"
-SERVICEURL="https://raw.githubusercontent.com/decred/dcrd/master/contrib/services/systemd/dcrd.service"
-WIKIURL="https://www.github.com/0x5826"
+function set_env_variables() {
+  USER="dcrd"
+  GROUP="dcrd"
+  DCRD_USER_HOME="/home/$USER"
+  DCRD_DATA_HOME="/home/$USER/.dcrd"
+  BINARYDIR="$DCRD_USER_HOME/decred"
+  BINARYPATH="$DCRD_USER_HOME/decred/dcrd"
+  CONFIGPATH="$DCRD_USER_HOME/.dcrd/dcrd.conf"
+  RPCUSER=$(openssl rand 16 | base64)
+  RPCPASS=$(openssl rand 16 | base64)
+  TMPDIR="$(mktemp -d)"
+  INTERFACE_IPv4=$(ifconfig -a|grep inet|grep -v 127.0.0.1|grep -v inet6|awk '{print $2}'|tr -d "addr:")
+  INTERNET_IPv4=$(curl -s ipv4.ip.sb)
+  VERSION=$(curl -fsSL https://api.github.com/repos/decred/decred-binaries/releases/latest | grep tag_name | sed -E 's/.*"(.*)".*/\1/')
+  DECRED_ARCHIVE="decred-linux-$MACHINE-$VERSION.tar.gz"
+  MANIFEST_SIGN="decred-$VERSION-manifest.txt.asc"
+  MANIFEST="decred-$VERSION-manifest.txt"
+  BASEURL="https://github.com/decred/decred-binaries/releases/download/$VERSION"
+  SERVICEURL="https://raw.githubusercontent.com/decred/dcrd/master/contrib/services/systemd/dcrd.service"
+  WIKIURL="https://www.github.com/0x5826"
+}
 
 function check_os_require() {
   free_mem=$(free -m|awk 'NR==2' |awk '{print$7}')
@@ -117,7 +118,7 @@ function check_os_require() {
   fi
 }
 
-function check_dcrd_environment () {
+function check_dcrd_env () {
   egrep "^$GROUP" /etc/group >& /dev/null
   if [ $? -eq 0 ]
   then
@@ -278,3 +279,10 @@ function uninstall_dcrd() {
   groupdel $GROUP
 }
 
+check_root
+check_os_architecture
+check_os_require
+set_env_variables
+check_dcrd_env
+install_software
+download_dcrd
