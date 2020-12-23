@@ -282,8 +282,8 @@ function uninstall_dcrd() {
 check_root
 check_os_arch
 check_os_resources
+install_software
 set_env_variables
 check_dcrd_env
-install_software
 download_dcrd
 install_dcrd
