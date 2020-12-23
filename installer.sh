@@ -159,7 +159,7 @@ function check_dcrd_env () {
   fi
 
   dcrd_port=$(netstat -an | grep ":9108 " | awk '$1 == "tcp" && $NF == "LISTEN" {print $0}')
-  if [ -n "$dcrd_port" ]
+  if [ -n $dcrd_port ]
   then
     echo "[ERROR]Another program listening 9108 Port."
     exit 1
