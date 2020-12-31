@@ -1,14 +1,14 @@
 #!/bin/bash
 set -euo pipefail
 
-function check_root() {
+function check_root_privilege() {
   if [[ "$UID" -ne '0' ]]; then
     echo "[ERROR]: You must run this script as root!"
     exit 1
   fi
 }
 
-function check_os_arch() {
+function check_archrchitecture() {
   if [[ "$(uname)" == 'Linux' ]]; then
   case "$(uname -m)" in
     'i386' | 'i686')
@@ -167,16 +167,16 @@ function check_dcrd_env () {
 
 function download_dcrd() {
   cd "$TMPDIR"
-  echo "[INFO]Downloading $DECRED_ARCHIVE..."
+  echo "[INFO]: Downloading $DECRED_ARCHIVE..."
   $(type -P curl) -LO --retry 5 --retry-delay 10 --retry-max-time 60 "$BASEURL/$DECRED_ARCHIVE" || $(type -P wget) -q -t 5 "$BASEURL/$DECRED_ARCHIVE"
   $(type -P curl) -LO --retry 5 --retry-delay 10 --retry-max-time 60 "$BASEURL/$MANIFEST_SIGN" || $(type -P wget) -q -t 5 "$BASEURL/$MANIFEST_SIGN"
   $(type -P curl) -LO --retry 5 --retry-delay 10 --retry-max-time 60 "$BASEURL/$MANIFEST" || $(type -P wget) -q -t 5 "$BASEURL/$MANIFEST"
   $(type -P curl) -LO --retry 5 --retry-delay 10 --retry-max-time 60 "$SERVICEURL" || $(type -P wget) -q -t 5 "$SERVICEURL"
   SHA256SUM=$(grep "$DECRED_ARCHIVE" $MANIFEST | $(type -P sha256sum ) -c -)
   if [[ "$SHA256SUM" =~ "OK" ]]; then
-    echo "[INFO]Download finished and Verified"
+    echo "[INFO]: Download finished and Verified"
   else
-    echo "[ERROR]Check failed! Please check your network or try again."
+    echo "[ERROR]: Check failed! Please check your network or try again."
     rm -f $TMPDIR
     exit 1
   fi
@@ -194,16 +194,16 @@ function install_dcrd() {
   cp -f "decred-linux-$MACHINE-$VERSION/dcrd" $BINARYPATH && chown dcrd:dcrd $BINARYPATH &&chmod a+x $BINARYPATH
   cp -f "dcrd.service" /etc/systemd/system/dcrd.service
   systemctl daemon-reload
-  read -p "[INFO]Start dcrd at boot: [Y/n] " option
+  read -p "[INFO]: Start dcrd at boot: [Y/n] " option
     case $option in
         [Yy] )
         systemctl enable dcrd.service
         ;;
         [Nn]|"" )
-        echo "[INFO]You can use command 'systemd enable dcrd.service' to enable it later."
+        echo "[INFO]: You can use command 'systemd enable dcrd.service' to enable it later."
         ;;
     esac
-  echo "[INFO]Generating dcrd.conf……"
+  echo "[INFO]: Generating dcrd.conf……"
   echo "externalip=$INTERNET_IPv4" > $CONFIGPATH
   echo "rpcuser=$RPCUSER" >> $CONFIGPATH
   echo "rpcpass=$RPCPASS" >> $CONFIGPATH
@@ -214,42 +214,42 @@ function install_dcrd() {
   if [[ $dcrd_status =~ "running" ]]
   then
       rm -rf "$TMPDIR"
-      echo "[INFO]dcrd is running, Clean tmp files……"
-      echo "[INFO]Install Finished!"
-      echo "[INFO]dcrd data directory:$DCRD_DATA_HOME"
-      echo "[INFO]dcrd binary directory:$BINARYPATH"
+      echo "[INFO]: dcrd is running, Clean tmp files……"
+      echo "[INFO]: Install Finished!"
+      echo "[INFO]: dcrd data directory:$DCRD_DATA_HOME"
+      echo "[INFO]: dcrd binary directory:$BINARYPATH"
   else
-      echo "[ERROR]There is something wrong with running dcrd. info:"
+      echo "[ERROR]: There is something wrong with running dcrd. info:"
       systemctl status dcrd.service
       exit 1
   fi
 }
 
 function upgrade_dcrd() {
-  echo "[INFO]stop dcrd node program……"
+  echo "[INFO]: stop dcrd node program……"
   systemctl stop dcrd.service
   cd "$TMPDIR"
   ##
-  echo "[INFO]starting dcrd node program……"
+  echo "[INFO]: starting dcrd node program……"
   dcrd_status=$(systemctl status dcrd.service)
   if [[ $str =~ "running" ]]
   then
-      echo "[INFO]dcrd is running, Clean $TMPDIR……"
+      echo "[INFO]: dcrd is running, Clean $TMPDIR……"
       rm -rf "$TMPDIR"
   else
-      echo "[ERROR]There is something wrong with running dcrd. info:"
+      echo "[ERROR]: There is something wrong with running dcrd. info:"
       systemctl status dcrd.service
       exit 1
   fi
 }
 
 function uninstall_dcrd() {
-  echo "[INFO]stop dcrd node program……"
+  echo "[INFO]: stop dcrd node program……"
   systemctl stop dcrd.service
-  echo "[INFO]disable dcrd node program on boot and delete dcrd.service……"
+  echo "[INFO]: disable dcrd node program on boot and delete dcrd.service……"
   systemctl disable dcrd.service
   rm -f /etc/systemd/system/dcrd.service
-  echo "[INFO]Delete USER:dcrd/GROUP:dcrd/dcrd's home."
+  echo "[INFO]: Delete USER:dcrd/GROUP:dcrd/dcrd's home."
   userdel -r $USER
   groupdel $GROUP
 }
