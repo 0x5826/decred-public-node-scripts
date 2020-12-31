@@ -8,7 +8,7 @@ function check_root_privilege() {
   fi
 }
 
-function check_archrchitecture() {
+function check_linux_archrchitecture() {
   if [[ "$(uname)" == 'Linux' ]]; then
   case "$(uname -m)" in
     'i386' | 'i686')
@@ -24,69 +24,33 @@ function check_archrchitecture() {
       MACHINE='arm64'
       ;;
     *)
-      echo "[ERROR]: The architecture is not supported."
+      echo "[ERROR]: The Architecture is not supported."
       exit 1
       ;;
     esac
-    if [[ ! -f '/etc/os-release' ]]; then
-      echo "[ERROR]: Don't use outdated Linux distributions."
-      exit 1
-    fi
-
-    if [[ -f /.dockerenv ]] || grep -q 'docker\|lxc' /proc/1/cgroup && [[ "$(type -P systemctl)" ]]; then
-      true
-    elif [[ -d /run/systemd/system ]] || grep -q systemd <(ls -l /sbin/init); then
-      true
-    else
-      echo "[ERROR]: Only Linux distributions using systemd are supported."
-      exit 1
-    fi
-    if [[ "$(type -P apt)" ]]; then
-      PACKAGE_MANAGEMENT_UPDATE='apt update'
-      PACKAGE_MANAGEMENT_INSTALL='apt -y --no-install-recommends install'
-      PACKAGE_MANAGEMENT_REMOVE='apt purge'
-      package_provide_tput='ncurses-bin'
-    elif [[ "$(type -P dnf)" ]]; then
-      PACKAGE_MANAGEMENT_UPDATE='dnf update'
-      PACKAGE_MANAGEMENT_INSTALL='dnf -y install'
-      PACKAGE_MANAGEMENT_REMOVE='dnf remove'
-      package_provide_tput='ncurses'
-    elif [[ "$(type -P yum)" ]]; then
-      PACKAGE_MANAGEMENT_UPDATE='yum update'
-      PACKAGE_MANAGEMENT_INSTALL='yum -y install'
-      PACKAGE_MANAGEMENT_REMOVE='yum remove'
-      package_provide_tput='ncurses'
-    elif [[ "$(type -P zypper)" ]]; then
-      PACKAGE_MANAGEMENT_UPDATE='zypper update'
-      PACKAGE_MANAGEMENT_INSTALL='zypper install -y --no-recommends'
-      PACKAGE_MANAGEMENT_REMOVE='zypper remove'
-      package_provide_tput='ncurses-utils'
-    elif [[ "$(type -P pacman)" ]]; then
-      PACKAGE_MANAGEMENT_UPDATE='pacman update'
-      PACKAGE_MANAGEMENT_INSTALL='pacman -Syu --noconfirm'
-      PACKAGE_MANAGEMENT_REMOVE='pacman -Rsn'
-      package_provide_tput='ncurses'
-    else
-      echo "[ERROR]: The script does not support the package manager in this operating system."
-      exit 1
-    fi
   else
-    echo "[ERROR]: This operating system is not supported."
+    echo "[ERROR]: This OS is not supported."
     exit 1
   fi
 }
 
-function install_software() {
-  ${PACKAGE_MANAGEMENT_UPDATE}
-  if ${PACKAGE_MANAGEMENT_INSTALL} "curl" "wget" "systemd" ; then
-    echo "[INFO]: curl wget is installed."
+function check_linux_distribution() {
+  if [[ ! -f '/etc/os-release' ]]; then
+    echo "[ERROR]: Don't use outdated Linux distributions."
+    exit 1
+  fi
+
+  if [[ -f /.dockerenv ]] || grep -q 'docker\|lxc' /proc/1/cgroup && [[ "$(type -P systemctl)" ]]; then
+    true
+  elif [[ -d /run/systemd/system ]] || grep -q systemd <(ls -l /sbin/init); then
+    true
   else
-    echo "[ERROR]: Installation of curl wget failed, please check your network."
+    echo "[ERROR]: Only Linux distributions using systemd are supported."
     exit 1
   fi
 }
 
-function check_os_resources() {
+function check_memory_and_disk() {
   free_mem=$(free -m|awk 'NR==2' |awk '{print$7}')
   if [ $free_mem -lt 768 ]
   then 
@@ -102,7 +66,49 @@ function check_os_resources() {
   fi
 }
 
-function set_env_variables() {
+function set_package_management() {
+  if [[ "$(type -P apt)" ]]; then
+    PACKAGE_MANAGEMENT_UPDATE='apt update'
+    PACKAGE_MANAGEMENT_INSTALL='apt -y --no-install-recommends install'
+    PACKAGE_MANAGEMENT_REMOVE='apt purge'
+    package_provide_tput='ncurses-bin'
+  elif [[ "$(type -P dnf)" ]]; then
+    PACKAGE_MANAGEMENT_UPDATE='dnf update'
+    PACKAGE_MANAGEMENT_INSTALL='dnf -y install'
+    PACKAGE_MANAGEMENT_REMOVE='dnf remove'
+    package_provide_tput='ncurses'
+  elif [[ "$(type -P yum)" ]]; then
+    PACKAGE_MANAGEMENT_UPDATE='yum update'
+    PACKAGE_MANAGEMENT_INSTALL='yum -y install'
+    PACKAGE_MANAGEMENT_REMOVE='yum remove'
+    package_provide_tput='ncurses'
+  elif [[ "$(type -P zypper)" ]]; then
+    PACKAGE_MANAGEMENT_UPDATE='zypper update'
+    PACKAGE_MANAGEMENT_INSTALL='zypper install -y --no-recommends'
+    PACKAGE_MANAGEMENT_REMOVE='zypper remove'
+    package_provide_tput='ncurses-utils'
+  elif [[ "$(type -P pacman)" ]]; then
+    PACKAGE_MANAGEMENT_UPDATE='pacman update'
+    PACKAGE_MANAGEMENT_INSTALL='pacman -Syu --noconfirm'
+    PACKAGE_MANAGEMENT_REMOVE='pacman -Rsn'
+    package_provide_tput='ncurses'
+  else
+    echo "[ERROR]: The script does not support the package manager in this operating system."
+    exit 1
+  fi
+}
+
+function install_necessary_software() {
+  ${PACKAGE_MANAGEMENT_UPDATE}
+  if ${PACKAGE_MANAGEMENT_INSTALL} "curl" "wget" "systemd" ; then
+    echo "[INFO]: curl wget systemd is installed."
+  else
+    echo "[ERROR]: Installation of curl wget failed, please check your network."
+    exit 1
+  fi
+}
+
+function set_install_variables() {
   USER="dcrd"
   GROUP="dcrd"
   DCRD_USER_HOME="/home/$USER"
@@ -184,9 +190,8 @@ function download_dcrd() {
 
 function install_dcrd() {
   echo "[INFO]Installing dcrd……"
-  #bug1
-#  groupadd $GROUP > /dev/null 2>&1
-#  useradd -m -g $GROUP -s /sbin/nologin $USER > /dev/null 2>&1
+  groupadd $GROUP > /dev/null 2>&1
+  useradd -m -g $GROUP -s /sbin/nologin $USER > /dev/null 2>&1
   mkdir -p $DCRD_DATA_HOME && chown dcrd:dcrd $DCRD_DATA_HOME
   mkdir -p $BINARYDIR && chown -R dcrd:dcrd $BINARYDIR
   cd $TMPDIR
@@ -253,12 +258,3 @@ function uninstall_dcrd() {
   userdel -r $USER
   groupdel $GROUP
 }
-
-check_root
-check_os_arch
-check_os_resources
-install_software
-set_env_variables
-check_dcrd_env
-download_dcrd
-install_dcrd
