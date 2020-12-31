@@ -108,7 +108,7 @@ function install_necessary_software() {
   fi
 }
 
-function set_install_variables() {
+function set_dcrd_install_variables() {
   USER="dcrd"
   GROUP="dcrd"
   DCRD_USER_HOME="/home/$USER"
@@ -130,7 +130,7 @@ function set_install_variables() {
   WIKIURL="https://www.github.com/0x5826"
 }
 
-function check_dcrd_env() {
+function check_dcrd_environment() {
   if [ -d "$DCRD_USER_HOME" ]
   then
     echo "[WARN]：$DCRD_USER_HOME existed."
@@ -216,7 +216,6 @@ function upgrade_dcrd() {
   echo "[INFO]: stop dcrd node program……"
   systemctl stop dcrd.service
   cd "$TMPDIR"
-  ##
   echo "[INFO]: starting dcrd node program……"
   dcrd_status=$(systemctl status dcrd.service)
   if [[ $str =~ "running" ]]
