@@ -90,14 +90,14 @@ function check_os_resources() {
   free_mem=$(free -m|awk 'NR==2' |awk '{print$7}')
   if [ $free_mem -lt 768 ]
   then 
-    echo "[ERROR]The memory request for 768MB at least, But only $free_mem MB."
+    echo "[ERROR]: The memory request for 768MB at least, But only $free_mem MB."
     exit 1
   fi
 
   free_disk=$(df -B G /home |awk '/\//{print$4}' | awk '{sub(/.{1}$/,"")}1' | sed 's/G//')
   if [ $free_disk -lt 8 ]
   then 
-    echo "[ERROR]The disk request for 8GB at least, But only $free_disk GB."
+    echo "[ERROR]: The dcrd blockdata request for 8GB at least, But only $free_disk GB."
     exit 1
   fi
 }
@@ -127,41 +127,41 @@ function set_env_variables() {
 function check_dcrd_env () {
   if [ -d "$DCRD_USER_HOME" ]
   then
-    echo "[WARN]$DCRD_USER_HOME existed"
+    echo "[WARN]：$DCRD_USER_HOME existed"
   fi
 
   if [ -d "$DCRD_DATA_HOME" ]
   then
-    read -p "[WARN]$DCRD_DATA_HOME existed, Do you want to delete $DCRD_DATA_HOME [Y/n] " option
+    read -p "[WARN]: $DCRD_DATA_HOME existed, Do you want to delete $DCRD_DATA_HOME [Y/n] " option
     case $option in
         [Yy] )
         rm -rf $DCRD_DATA_HOME
-        echo "[INFO]$DCRD_DATA_HOME deleted."
+        echo "[INFO]: $DCRD_DATA_HOME deleted."
         ;;
         [Nn]|"" )
-        echo "[WARN]The existed diretory may cause unexpected problem!"
+        echo "[WARN]: The existed diretory may cause unexpected problem!"
         ;;
     esac
   fi
 
   if [ -d "$BINARYPATH" ]
   then
-    read -p "[WARN]$BINARYPATH existed, Do you want to delete $BINARYPATH [Y/n] " option
+    read -p "[WARN]: $BINARYPATH existed, Do you want to delete $BINARYPATH [Y/n] " option
     case $option in
         [Yy] )
         rm -rf $BINARYPATH
-        echo "[INFO]$BINARYPATH deleted."
+        echo "[INFO]: $BINARYPATH deleted."
         ;;
         [Nn]|"" )
-        echo "[WARN]The existed diretory may cause unexpected problem!"
+        echo "[WARN]: The existed diretory may cause unexpected problem!"
         ;;
     esac
   fi
 
   if [ "$INTERFACE_IPv4" != "$INTERNET_IPv4" ]
   then
-    echo "[WARN]Your interface IP:$INTERFACE_IPv4 and Internet IP:$INTERNET_IPv4 are inconsistent, some conditions refer to $WIKIURL"
-    echo "[WARN]Dcrd Node will use Internet IP for dcrd.conf."
+    echo "[WARN]: Your interface IP:$INTERFACE_IPv4 and Internet IP:$INTERNET_IPv4 are inconsistent, some conditions refer to $WIKIURL"
+    echo "[WARN]: Dcrd Node will use Internet IP for dcrd.conf."
   fi
 }
 
