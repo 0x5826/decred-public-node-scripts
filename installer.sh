@@ -187,26 +187,26 @@ function install_dcrd() {
   tar zxf $DECRED_ARCHIVE
   cp -f "decred-linux-$MACHINE-$VERSION/dcrd" $BINARYPATH && chown dcrd:dcrd $BINARYPATH &&chmod a+x $BINARYPATH
   cp -f "dcrd.service" /etc/systemd/system/dcrd.service
-  systemctl daemon-reload
-  systemctl enable dcrd.service
-
+  
   echo "[INFO]: Generating dcrd.conf……"
   echo "externalip=$INTERNET_IPv4" > $CONFIGPATH
   echo "rpcuser=$RPCUSER" >> $CONFIGPATH
   echo "rpcpass=$RPCPASS" >> $CONFIGPATH
 
   echo "[INFO]: Running dcrd node program……"
+  systemctl daemon-reload
+  systemctl enable dcrd.service
   systemctl start dcrd.service
+
   dcrd_status=$(systemctl status dcrd.service)
   if [[ $dcrd_status =~ "running" ]]
   then
-      rm -rf "$TMPDIR"
+      rm -rf $TMPDIR
       echo "[INFO]: dcrd is running, Clean tmp files……"
-      echo "[INFO]: Install Finished!"
+      echo "[INFO]: dcrd Install Finished!"
       echo "[INFO]: dcrd data directory:$DCRD_DATA_HOME"
       echo "[INFO]: dcrd binary directory:$BINARYPATH"
   else
-      echo "[ERROR]: There is something wrong with running dcrd. info:"
       systemctl status dcrd.service
       exit 1
   fi
