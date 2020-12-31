@@ -130,48 +130,34 @@ function set_install_variables() {
   WIKIURL="https://www.github.com/0x5826"
 }
 
-function check_dcrd_env () {
+function check_dcrd_env() {
   if [ -d "$DCRD_USER_HOME" ]
   then
-    echo "[WARN]：$DCRD_USER_HOME existed"
+    echo "[WARN]：$DCRD_USER_HOME existed."
   fi
 
   if [ -d "$DCRD_DATA_HOME" ]
   then
-    read -p "[WARN]: $DCRD_DATA_HOME existed, Do you want to delete $DCRD_DATA_HOME [Y/n] " option
-    case $option in
-        [Yy] )
-        rm -rf $DCRD_DATA_HOME
-        echo "[INFO]: $DCRD_DATA_HOME deleted."
-        ;;
-        [Nn]|"" )
-        echo "[WARN]: The existed diretory may cause unexpected problem!"
-        ;;
-    esac
+    echo "[WARN]: $DCRD_DATA_HOME existed."
   fi
 
   if [ -d "$BINARYPATH" ]
   then
-    read -p "[WARN]: $BINARYPATH existed, Do you want to delete $BINARYPATH [Y/n] " option
-    case $option in
-        [Yy] )
-        rm -rf $BINARYPATH
-        echo "[INFO]: $BINARYPATH deleted."
-        ;;
-        [Nn]|"" )
-        echo "[WARN]: The existed diretory may cause unexpected problem!"
-        ;;
-    esac
+    echo "[WARN]: $DCRD_DATA_HOME existed."
   fi
 
-  if [ "$INTERFACE_IPv4" != "$INTERNET_IPv4" ]
+  if [ -z "$INTERNET_IPv4" ]
+  then
+    echo "[ERROR]: Can't detect any internel ip address!"
+    exit 1
+  elif [ "$INTERFACE_IPv4" != "$INTERNET_IPv4" ]
   then
     echo "[WARN]: Your interface IP:$INTERFACE_IPv4 and Internet IP:$INTERNET_IPv4 are inconsistent, some conditions refer to $WIKIURL"
-    echo "[WARN]: Dcrd Node will use Internet IP for dcrd.conf."
+    echo "[WARN]: dcrd.config will be setted: externalip=$INTERNET_IPv4."
   fi
 }
 
-function download_dcrd() {
+function download_and_verifiy_dcrd() {
   cd "$TMPDIR"
   echo "[INFO]: Downloading $DECRED_ARCHIVE..."
   $(type -P curl) -LO --retry 5 --retry-delay 10 --retry-max-time 60 "$BASEURL/$DECRED_ARCHIVE" || $(type -P wget) -q -t 5 "$BASEURL/$DECRED_ARCHIVE"
@@ -188,32 +174,28 @@ function download_dcrd() {
   fi
 }
 
-function install_dcrd() {
-  echo "[INFO]Installing dcrd……"
+function create_usr_dcrd() {
   groupadd $GROUP > /dev/null 2>&1
   useradd -m -g $GROUP -s /sbin/nologin $USER > /dev/null 2>&1
   mkdir -p $DCRD_DATA_HOME && chown dcrd:dcrd $DCRD_DATA_HOME
   mkdir -p $BINARYDIR && chown -R dcrd:dcrd $BINARYDIR
+}
+
+function install_dcrd() {
+  echo "[INFO]: Installing dcrd……"
   cd $TMPDIR
   tar zxf $DECRED_ARCHIVE
   cp -f "decred-linux-$MACHINE-$VERSION/dcrd" $BINARYPATH && chown dcrd:dcrd $BINARYPATH &&chmod a+x $BINARYPATH
   cp -f "dcrd.service" /etc/systemd/system/dcrd.service
   systemctl daemon-reload
-  read -p "[INFO]: Start dcrd at boot: [Y/n] " option
-    case $option in
-        [Yy] )
-        systemctl enable dcrd.service
-        ;;
-        [Nn]|"" )
-        echo "[INFO]: You can use command 'systemd enable dcrd.service' to enable it later."
-        ;;
-    esac
+  systemctl enable dcrd.service
+
   echo "[INFO]: Generating dcrd.conf……"
   echo "externalip=$INTERNET_IPv4" > $CONFIGPATH
   echo "rpcuser=$RPCUSER" >> $CONFIGPATH
   echo "rpcpass=$RPCPASS" >> $CONFIGPATH
 
-  echo "[INFO]Running dcrd node program……"
+  echo "[INFO]: Running dcrd node program……"
   systemctl start dcrd.service
   dcrd_status=$(systemctl status dcrd.service)
   if [[ $dcrd_status =~ "running" ]]
