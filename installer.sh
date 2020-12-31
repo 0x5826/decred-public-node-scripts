@@ -3,7 +3,7 @@ set -euo pipefail
 
 function check_root() {
   if [[ "$UID" -ne '0' ]]; then
-    echo "error: You must run this script as root!"
+    echo "[ERROR]: You must run this script as root!"
     exit 1
   fi
 }
@@ -24,12 +24,12 @@ function check_os_arch() {
       MACHINE='arm64'
       ;;
     *)
-      echo "[ERROR]The architecture is not supported."
+      echo "[ERROR]: The architecture is not supported."
       exit 1
       ;;
     esac
     if [[ ! -f '/etc/os-release' ]]; then
-      echo "error: Don't use outdated Linux distributions."
+      echo "[ERROR]: Don't use outdated Linux distributions."
       exit 1
     fi
 
@@ -38,7 +38,7 @@ function check_os_arch() {
     elif [[ -d /run/systemd/system ]] || grep -q systemd <(ls -l /sbin/init); then
       true
     else
-      echo "error: Only Linux distributions using systemd are supported."
+      echo "[ERROR]: Only Linux distributions using systemd are supported."
       exit 1
     fi
     if [[ "$(type -P apt)" ]]; then
@@ -67,11 +67,11 @@ function check_os_arch() {
       PACKAGE_MANAGEMENT_REMOVE='pacman -Rsn'
       package_provide_tput='ncurses'
     else
-      echo "error: The script does not support the package manager in this operating system."
+      echo "[ERROR]: The script does not support the package manager in this operating system."
       exit 1
     fi
   else
-    echo "error: This operating system is not supported."
+    echo "[ERROR]: This operating system is not supported."
     exit 1
   fi
 }
@@ -79,9 +79,9 @@ function check_os_arch() {
 function install_software() {
   ${PACKAGE_MANAGEMENT_UPDATE}
   if ${PACKAGE_MANAGEMENT_INSTALL} "curl" "wget" "systemd" ; then
-    echo "[INFO]curl wget is installed."
+    echo "[INFO]: curl wget is installed."
   else
-    echo "[ERROR]Installation of curl wget failed, please check your network."
+    echo "[ERROR]: Installation of curl wget failed, please check your network."
     exit 1
   fi
 }
